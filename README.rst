@@ -2,8 +2,8 @@ Python Best Buy API Wrapper
 ===========================
 
 This is a small Python wrapper implementation for BestBuy APIs. This was originally
-forked from an earlier version from https://github.com/lv10, but was later
-rewritten from scratch. This implementation aims to implement all of the public APIs
+forked from an earlier version from https://github.com/lv10, but was **later
+rewritten from scratch**. This implementation aims to implement all of the public APIs
 from BestBuy, including the Products, Stores, Categories, Open Box, Recommendations
 and Smart Lists APIs.
 
