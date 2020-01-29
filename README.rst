@@ -37,6 +37,7 @@ Documentation
 -----------------------------
 ProductAPI:
     Returns a list of Product objects
+    
     Methods:
         - search_by_sku(sku=1234)
         - search_by_upc(upc=4321)
@@ -70,6 +71,7 @@ ProductAPI:
 
 StoreAPI:
     Returns a list of Store objects
+    
     Methods:
         - search_by_postal_code(postal_code=30307, (Optional) distance, (Optional) store_services=[], (Optional) store_type=[])
         - search_by_city(city="Atlanta", (Optional) store_services=[], (Optional) store_type=[])
@@ -79,6 +81,7 @@ StoreAPI:
         
 CategoryAPI:
     Returns a list of Category objects
+    
     Methods:
         - search_all_categories()
         - search_top_level_categories()
@@ -87,12 +90,14 @@ CategoryAPI:
         
 RecommendationAPI:
     Returns a list of Recommendation objects
+    
     Methods:
         - most_popular_by_category_id(category_id=1234)
         - trending_by_category_id(category_id=1234)
         
 OpenBoxAPI:
     Returns a list of OpenBox objects
+    
     Methods:
         - all_open_box_offers()
         - open_box_offers_by_skus(skus=[])
