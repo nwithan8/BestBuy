@@ -42,7 +42,7 @@ ProductAPI:
         - search_by_sku(sku=1234)
         - search_by_upc(upc=4321)
         - search_by_description(description="hard drive")
-        - search(searchTerm="tv", **kwargs)
+        - search(searchTerm="tv", *kwargs)
             Available kwargs:
                 bestSellingRank,
                 color,
@@ -102,6 +102,3 @@ OpenBoxAPI:
         - all_open_box_offers()
         - open_box_offers_by_skus(skus=[])
         - open_box_offers_by_category_id(category_id=1234)
-
-
-# TODO: Complete object documentation
