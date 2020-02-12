@@ -74,11 +74,11 @@ StoreAPI:
     Returns a list of Store objects
     
     Methods:
-        - search_by_postal_code(postal_code=30307, (Optional) distance, (Optional) store_services=[], (Optional) store_type=[])
-        - search_by_city(city="Atlanta", (Optional) store_services=[], (Optional) store_type=[])
-        - search_by_lat_long(lat=###, long=###, distance=###, (Optional) store_services=[], (Optional) store_type=[])
-        - search_by_store_id(store_id=###, (Optional) store_services=[], (Optional) store_type=[])
-        - search_by_region_state(region_state="Georgia", (Optional) store_services=[], (Optional) store_type=[])
+        - search_by_postal_code(postal_code=30307, (*Optional*) distance, (*Optional*) store_services=[], (*Optional*) store_type=[])
+        - search_by_city(city="Atlanta", (*Optional*) store_services=[], (*Optional*) store_type=[])
+        - search_by_lat_long(lat=###, long=###, distance=###, (*Optional*) store_services=[], (*Optional*) store_type=[])
+        - search_by_store_id(store_id=###, (*Optional*) store_services=[], (*Optional*) store_type=[])
+        - search_by_region_state(region_state="Georgia", (*Optional*) store_services=[], (*Optional*) store_type=[])
         
 CategoryAPI:
     Returns a list of Category objects
