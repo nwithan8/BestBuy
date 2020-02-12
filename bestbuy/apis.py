@@ -124,7 +124,10 @@ class StoreAPI:
             for service in store_services:
                 query = query + "(services.service=\"{0}\")&".format(service)
             query = query[:-1] + ")"
-        return self._post_query('(storeId={0}){1}'.format(str(store_id), query))[0]
+        try:
+            return self._post_query('(storeId={0}){1}'.format(str(store_id), query))[0]
+        except IndexError:
+            return None
 
     def search_by_region_state(self, region_state, store_services=[], store_type=[]):
         """
@@ -172,7 +175,10 @@ class ProductAPI:
 
         Returns one Product object
         """
-        return self._post_query('(sku={0})'.format(str(sku)), sort)[0]
+        try:
+            return self._post_query('(sku={0})'.format(str(sku)), sort)[0]
+        except IndexError:
+            return None
 
     def search_by_upc(self, upc, sort=None):
         """
@@ -183,7 +189,10 @@ class ProductAPI:
 
         Returns one Product object
         """
-        return self._post_query('(upc={0})'.format(str(upc)), sort)[0]
+        try:
+            return self._post_query('(upc={0})'.format(str(upc)), sort)[0]
+        except IndexError:
+            return None
 
     def search_by_description(self, description, sort=None):
         """
