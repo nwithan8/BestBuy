@@ -42,7 +42,7 @@ ProductAPI:
         - search_by_sku(sku=1234)
         - search_by_upc(upc=4321)
         - search_by_description(description="hard drive")
-        - search(searchTerm="tv", *kwargs)
+        - search(searchTerm="tv", \*\*kwargs)
             Available kwargs:
                 bestSellingRank,
                 color,
