@@ -42,7 +42,8 @@ ProductAPI:
         - search_by_sku(sku=1234)
         - search_by_upc(upc=4321)
         - search_by_description(description="hard drive")
-        - search(searchTerm="tv", **kwargs)
+        - search(searchTerm="tv", \*\*kwargs)
+        
             Available kwargs:
                 bestSellingRank,
                 color,
@@ -73,11 +74,11 @@ StoreAPI:
     Returns a list of Store objects
     
     Methods:
-        - search_by_postal_code(postal_code=30307, (Optional) distance, (Optional) store_services=[], (Optional) store_type=[])
-        - search_by_city(city="Atlanta", (Optional) store_services=[], (Optional) store_type=[])
-        - search_by_lat_long(lat=###, long=###, distance=###, (Optional) store_services=[], (Optional) store_type=[])
-        - search_by_store_id(store_id=###, (Optional) store_services=[], (Optional) store_type=[])
-        - search_by_region_state(region_state="Georgia", (Optional) store_services=[], (Optional) store_type=[])
+        - search_by_postal_code(postal_code=30307, (*Optional*) distance, (*Optional*) store_services=[], (*Optional*) store_type=[])
+        - search_by_city(city="Atlanta", (*Optional*) store_services=[], (*Optional*) store_type=[])
+        - search_by_lat_long(lat=###, long=###, distance=###, (*Optional*) store_services=[], (*Optional*) store_type=[])
+        - search_by_store_id(store_id=###, (*Optional*) store_services=[], (*Optional*) store_type=[])
+        - search_by_region_state(region_state="Georgia", (*Optional*) store_services=[], (*Optional*) store_type=[])
         
 CategoryAPI:
     Returns a list of Category objects
@@ -102,6 +103,3 @@ OpenBoxAPI:
         - all_open_box_offers()
         - open_box_offers_by_skus(skus=[])
         - open_box_offers_by_category_id(category_id=1234)
-
-
-# TODO: Complete object documentation
