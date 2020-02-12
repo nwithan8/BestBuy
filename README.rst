@@ -17,15 +17,13 @@ Example of using Product, Store and Category APIs
 
 .. code-block:: python
 
-    >>> import bestbuyapi.apis as bestbuy
-    >>> product_api = bestbuy.ProductAPI("YourSecretAPIKey")
-    >>> store_api = bestbuy.StoreAPI("YourSecretAPIKey")
-    >>> category_api = bestbuy.CategoryAPI("YourSecretAPIKey")
-    >>>
-    >>> product_api.search_by_sku(sku=9776457)
-    >>> product_api.search(searchTerm="hard drive", onSale="true")
-    >>> store_api.search_by_city(city="Atlanta")
-    >>> category_api.search_by_category_id(category_id="abcat0011001")
+    >>> from bestbuy.apis import BestBuy
+    >>> bb = BestBuy("YourSecretAPIKey")
+    
+    >>> bb.ProductAPI.search_by_sku(sku=9776457)
+    >>> bb.ProductAPI.search(searchTerm="hard drive", onSale="true")
+    >>> bb.StoreAPI.search_by_city(city="Atlanta")
+    >>> bb.CategoryAPI.search_by_category_id(category_id="abcat0011001")
 
 How to get a BestBuy API Key
 ----------------------------
