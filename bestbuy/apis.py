@@ -3,10 +3,12 @@
 import requests
 import json
 from collections import namedtuple
-from objects import *
+from bestbuy.objects import *
+
+api_key = None
 
 
-def _query(version, query, category, api_key, sort=None):
+def _query(version, query, category, sort=None):
     """
     Make API call
     Return JSON
@@ -33,23 +35,25 @@ class BestBuy:
     TODO: Add Results Per Page option
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, key):
+        global api_key
+        api_key = key
+        self.ProductAPI = ProductAPI()
+        self.StoreAPI = StoreAPI()
+        self.RecommendationAPI = RecommendationAPI()
+        self.CategoryAPI = CategoryAPI()
+        self.OpenBoxAPI = OpenBoxAPI()
 
 
-class StoreAPI(BestBuy):
+class StoreAPI:
     """
     TODO: Store type and services filters
     """
 
     category = 'stores'
-    api_key = None
-
-    def __init__(self, api_key):
-        self.api_key = api_key
 
     def _post_query(self, query):
-        store_list = _query('v1', '({0})'.format(query), self.category, self.api_key, None).get('stores', [])
+        store_list = _query('v1', '({0})'.format(query), self.category, None).get('stores', [])
         return [Store(store) for store in store_list]
 
     def search_by_postal_code(self, postal_code, distance=None, store_services=[], store_type=[]):
@@ -140,16 +144,12 @@ class StoreAPI(BestBuy):
         return self._post_query('(region={0}){1}'.format(region_state), query)
 
 
-class ProductAPI(BestBuy):
+class ProductAPI:
     """
     TODO: Document Sort params
     """
 
     category = 'products'
-    api_key = None
-
-    def __init__(self, api_key):
-        self.api_key = api_key
 
     def _post_query(self, query, sort=None):
         """
@@ -159,7 +159,7 @@ class ProductAPI(BestBuy):
 
         Return Product object(s)
         """
-        product_list = _query('v1', query, self.category, self.api_key,
+        product_list = _query('v1', query, self.category,
                               '&sort={0}.asc'.format(sort) if sort else None).get('products', [])
         return [Product(product) for product in product_list]
 
@@ -241,14 +241,10 @@ class ProductAPI(BestBuy):
         return self._post_query(searchTerm)
 
 
-class RecommendationAPI(BestBuy):
-    api_key = None
-
-    def __init__(self, api_key):
-        self.api_key = api_key
+class RecommendationAPI:
 
     def _post_query(self, query, endpoint):
-        recommendation_list = _query('beta/products', '{0}'.format(query), endpoint, self.api_key, None).get('results', [])
+        recommendation_list = _query('beta/products', '{0}'.format(query), endpoint, None).get('results', [])
         return [Recommendation(recommendation) for recommendation in recommendation_list]
 
     def most_popular_by_category_id(self, category_id):
@@ -258,15 +254,11 @@ class RecommendationAPI(BestBuy):
         return self._post_query('(categoryId={0})'.format(str(category_id)), 'trendingViewed')
 
 
-class CategoryAPI(BestBuy):
+class CategoryAPI:
     category = 'categories'
-    api_key = None
-
-    def __init__(self, api_key):
-        self.api_key = api_key
 
     def _post_query(self, query):
-        category_list = _query('v1', '{0}'.format(query), self.category, self.api_key, None).get('categories', [])
+        category_list = _query('v1', '{0}'.format(query), self.category, None).get('categories', [])
         return [Category(category) for category in category_list]
 
     def search_all_categories(self):
@@ -282,15 +274,11 @@ class CategoryAPI(BestBuy):
         return self._post_query('(id={0})'.format(str(category_id)))
 
 
-class OpenBoxAPI(BestBuy):
+class OpenBoxAPI:
     category = 'openBox'
-    api_key = None
-
-    def __init__(self, api_key):
-        self.api_key = api_key
 
     def _post_query(self, query, sort=None):
-        openBox_list = _query('beta/products', query, self.category, self.api_key, None).get('results', [])
+        openBox_list = _query('beta/products', query, self.category, None).get('results', [])
         return [OpenBox(openBox) for openBox in openBox_list]
 
     def all_open_box_offers(self):
