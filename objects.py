@@ -1,6 +1,10 @@
+# import json
+
+
 class Category:
 
     def __init__(self, json):
+        # self.__dict = json.loads(str(j))
         self.json = json
         self.id = json.get('id', None)
         self.name = json.get('name', None)
@@ -9,10 +13,14 @@ class Category:
         self.path = json.get('path', None)
         self.subCategories = json.get('subCategories', [])
 
+    def __getattr__(self, name):
+        return None
+
 
 class Recommendation:
 
     def __init__(self, json):
+        # self.__dict = json.loads(str(j))
         self.json = json
         self.sku = json.get('sku', None)
         self.customerReviewAverage = json.get('customerReviews', []).get('averageScore', None)
@@ -27,10 +35,14 @@ class Recommendation:
         self.addToCartUrl = json.get('links', None).get('addToCart', None)
         self.rank = json.get('rank', None)
 
+    def __getattr__(self, name):
+        return None
+
 
 class Store:
 
     def __init__(self, json):
+        # self.__dict = json.loads(str(j))
         self.json = json
         self.storeId = json.get('storeId', None)
         self.storeType = json.get('storeType', None)
@@ -53,10 +65,14 @@ class Store:
         for service in json.get('services', []):
             self.services.append(service.get('service', ""))
 
+    def __getattr__(self, name):
+        return None
+
 
 class Image:
 
     def __init__(self, json):
+        # self.__dict = json.loads(str(j))
         self.json = json
         self.rel = json.get('rel', None)
         self.unitOfMeasure = json.get('unitOfMeasure', None)
@@ -65,10 +81,14 @@ class Image:
         self.href = json.get('href', None)
         self.primary = json.get('primary', None)
 
+    def __getattr__(self, name):
+        return None
+
 
 class Product:
 
     def __init__(self, json):
+        # self.__dict = json.loads(str(j))
         self.relatedProductsSKUs = []
         self.categoryPath = []
         self.alternateCategories = []
@@ -267,10 +287,14 @@ class Product:
         self.smartCapable = json.get('smartCapable', None)
         self.usbPort = json.get('usbPort', None)
 
+    def __getattr__(self, name):
+        return None
+
 
 class Offer:
 
     def __init__(self, json):
+        # self.__dict = json.loads(str(j))
         self.json = json
         self.currentPrice = json.get('prices', None).get('currentPrice', None)
         self.regularPrice = json.get('prices', None).get('regularPrice', None)
@@ -280,10 +304,14 @@ class Offer:
         self.listingId = json.get('listingId', None)
         self.sellerId = json.get('sellerId', None)
 
+    def __getattr__(self, name):
+        return None
+
 
 class OpenBox:
 
     def __init__(self, json):
+        # self.__dict = json.loads(j)
         self.json = json
         self.sku = json.get('sku', None)
         self.customerReviewAverage = json.get('customerReviews', None).get('averageScore', None)
@@ -299,3 +327,6 @@ class OpenBox:
         self.offers = []
         for offer in json.get('offers', None):
             self.offers.append(Offer(offer))
+
+    def __getattr__(self, name):
+        return None

@@ -140,6 +140,107 @@ class StoreAPI(BestBuy):
         return self._post_query('(region={0}){1}'.format(region_state), query)
 
 
+class ProductAPI(BestBuy):
+    """
+    TODO: Document Sort params
+    """
+
+    category = 'products'
+    api_key = None
+
+    def __init__(self, api_key):
+        self.api_key = api_key
+
+    def _post_query(self, query, sort=None):
+        """
+        Call API
+
+        :param query: query against the API
+
+        Return Product object(s)
+        """
+        product_list = _query('v1', query, self.category, self.api_key,
+                              '&sort={0}.asc'.format(sort) if sort else None).get('products', [])
+        return [Product(product) for product in product_list]
+
+    def search_by_sku(self, sku, sort=None):
+        """
+        Search by SKU number
+
+        :param sort:
+        :param sku: SKU number
+
+        Returns one Product object
+        """
+        return self._post_query('(sku={0})'.format(str(sku)), sort)[0]
+
+    def search_by_upc(self, upc, sort=None):
+        """
+        Search by UPC number
+
+        :param sort:
+        :param upc: UPC number
+
+        Returns one Product object
+        """
+        return self._post_query('(upc={0})'.format(str(upc)), sort)[0]
+
+    def search_by_description(self, description, sort=None):
+        """
+        Search by product description
+
+        :param sort:
+        :param description: Product description to search
+
+        Returns multiple Product objects
+        """
+        return self._post_query('(description={0})'.format(description), sort=None)
+
+    def search(self, searchTerm=None, **kwargs):
+        """
+        General search
+
+        :param searchTerm: Keyword or phrase to search for
+        :param **kwargs: Available options:
+            bestSellingRank,
+            color,
+            categoryPath.id,
+            categoryPath.name,
+            condition,
+            customerReviewAverage,
+            customerReviewCount,
+            description,
+            dollarSavings,
+            freeShipping = true|false,
+            inStoreAvailability = true|false,
+            manufacturer,
+            modelNumber,
+            name,
+            onlineAvailability = true|false,
+            onSale = true|false,
+            percentSavings,
+            preowned = true|false,
+            regularPrice,
+            salePrice,
+            shippingCost,
+            sku,
+            type,
+            upc
+
+
+        Returns multiple Product objects
+        """
+        if not searchTerm:
+            searchTerm = ""
+        else:
+            searchTerm = '(search={})&'.format(searchTerm)
+        if kwargs:
+            for key, value in kwargs.items():
+                searchTerm = '{s}{k}={v}&'.format(s=searchTerm, k=key, v=value)
+            searchTerm = '({})'.format(searchTerm[:-1])
+        return self._post_query(searchTerm)
+
+
 class RecommendationAPI(BestBuy):
     api_key = None
 
@@ -204,103 +305,3 @@ class OpenBoxAPI(BestBuy):
 
     def open_box_offers_by_category_id(self, category_id):
         return self._post_query('(categoryId={0})'.format(str(category_id)))
-
-
-class ProductAPI(BestBuy):
-    """
-    TODO: Document Sort params
-    """
-
-    category = 'products'
-    api_key = None
-
-    def __init__(self, api_key):
-        self.api_key = api_key
-
-    def _post_query(self, query, sort=None):
-        """
-        Call API
-        
-        :param query: query against the API
-        
-        Return Product object(s)
-        """
-        product_list = _query('v1', query, self.category, self.api_key, '&sort={0}.asc'.format(sort) if sort else None).get('products', [])
-        return [Product(product) for product in product_list]
-
-    def search_by_sku(self, sku, sort=None):
-        """
-        Search by SKU number
-        
-        :param sort:
-        :param sku: SKU number
-        
-        Returns one Product object
-        """
-        return self._post_query('(sku={0})'.format(str(sku)), sort)[0]
-
-    def search_by_upc(self, upc, sort=None):
-        """
-        Search by UPC number
-        
-        :param sort:
-        :param upc: UPC number
-        
-        Returns one Product object
-        """
-        return self._post_query('(upc={0})'.format(str(upc)), sort)[0]
-
-    def search_by_description(self, description, sort=None):
-        """
-        Search by product description
-        
-        :param sort:
-        :param description: Product description to search
-        
-        Returns multiple Product objects
-        """
-        return self._post_query('(description={0})'.format(description), sort=None)
-
-    def search(self, searchTerm=None, **kwargs):
-        """
-        General search
-        
-        :param searchTerm: Keyword or phrase to search for
-        :param **kwargs: Available options:
-            bestSellingRank,
-            color,
-            categoryPath.id,
-            categoryPath.name,
-            condition,
-            customerReviewAverage,
-            customerReviewCount,
-            description,
-            dollarSavings,
-            freeShipping = true|false,
-            inStoreAvailability = true|false,
-            manufacturer,
-            modelNumber,
-            name,
-            onlineAvailability = true|false,
-            onSale = true|false,
-            percentSavings,
-            preowned = true|false,
-            regularPrice,
-            salePrice,
-            shippingCost,
-            sku,
-            type,
-            upc
-
-
-        Returns multiple Product objects
-        """
-        if not searchTerm:
-            searchTerm = ""
-        else:
-            searchTerm = '(search={})&'.format(searchTerm)
-        if kwargs:
-            for key, value in kwargs.items():
-                searchTerm = '{s}{k}={v}&'.format(s=searchTerm, k=key, v=value)
-            searchTerm = '({})'.format(searchTerm[:-1])
-        return self._post_query(searchTerm)
