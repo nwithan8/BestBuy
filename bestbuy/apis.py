@@ -242,8 +242,9 @@ class ProductAPI:
         if not searchTerm:
             searchTerm = ""
         else:
-            searchTerm = '(search={})&'.format(searchTerm)
+            searchTerm = '(search={})'.format(searchTerm)
         if kwargs:
+            searchTerm += '&'
             for key, value in kwargs.items():
                 searchTerm = '{s}{k}={v}&'.format(s=searchTerm, k=key, v=value)
             searchTerm = '({})'.format(searchTerm[:-1])
