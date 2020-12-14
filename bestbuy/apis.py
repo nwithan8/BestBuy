@@ -1,33 +1,8 @@
 #!/usr/bin/python3
+from typing import Union, List
 
 import requests
-import json
-from collections import namedtuple
-from bestbuy.objects import *
-
-api_key = None
-
-
-def _query(version, query, category, sort=None):
-    """
-    Make API call
-    Return JSON
-    """
-    return requests.get(
-        'https://api.bestbuy.com/{version}/{category}{query}?apiKey={key}{sort}&format=json'.format(version=version,
-                                                                                                    category=category,
-                                                                                                    query=query,
-                                                                                                    key=api_key,
-                                                                                                    sort=(
-                                                                                                        sort if sort else ""))).json()
-
-
-def connected_home_smart_list():
-    return _query('beta/products', '', 'connectedHome')
-
-
-def active_adventurer_smart_list():
-    return _query('beta/products', '', 'activeAdventurer')
+from bestbuy.classes import Store, Product, OpenBox, Category, Recommendation
 
 
 class BestBuy:
@@ -35,14 +10,65 @@ class BestBuy:
     TODO: Add Results Per Page option
     """
 
-    def __init__(self, key):
-        global api_key
-        api_key = key
-        self.ProductAPI = ProductAPI()
-        self.StoreAPI = StoreAPI()
-        self.RecommendationAPI = RecommendationAPI()
-        self.CategoryAPI = CategoryAPI()
-        self.OpenBoxAPI = OpenBoxAPI()
+    def __init__(self,
+                 api_key: str,
+                 raw_json: bool = False,
+                 verbose: bool = False):
+        self.key = api_key
+        self.raw = raw_json
+        self.verbose = verbose
+        self.ProductAPI = ProductAPI(best_buy=self)
+        self.StoreAPI = StoreAPI(best_buy=self)
+        self.RecommendationAPI = RecommendationAPI(best_buy=self)
+        self.CategoryAPI = CategoryAPI(best_buy=self)
+        self.OpenBoxAPI = OpenBoxAPI(best_buy=self)
+
+    def _query(self,
+               version: str,
+               query: str,
+               category: str,
+               sort: str = None) -> dict:
+        """
+        Make API call
+        Return JSON
+        """
+        url = f'https://api.bestbuy.com/{version}/{category}{query}?apiKey={self.key}{sort if sort else ""}&pageSize=100&format=json'
+        if self.verbose:
+            print(f"GET {url}")
+        res = requests.get(url)
+        if res:
+            return res.json()
+        return {}
+
+    @property
+    def open_box_offers(self) -> Union[dict, List[OpenBox]]:
+        return self.OpenBoxAPI.all_open_box_offers()
+
+    @property
+    def categories(self) -> Union[dict, List[Category]]:
+        return self.CategoryAPI.search_all_categories()
+
+    @property
+    def top_level_categories(self) -> Union[dict, List[Category]]:
+        return self.CategoryAPI.search_top_level_categories()
+
+class Lists:
+
+    def __init__(self,
+                 best_buy: BestBuy):
+        self._best_buy = best_buy
+
+    @property
+    def connected_home_smart_list(self) -> dict:
+        return self._best_buy._query(version='beta/products',
+                                     query='',
+                                     category='connectedHome')
+
+    @property
+    def active_adventurer_smart_list(self) -> dict:
+        return self._best_buy._query(version='beta/products',
+                                     query='',
+                                     category='activeAdventurer')
 
 
 class StoreAPI:
@@ -52,99 +78,106 @@ class StoreAPI:
 
     category = 'stores'
 
-    def _post_query(self, query):
-        store_list = _query('v1', '({0})'.format(query), self.category, None).get('stores', [])
-        return [Store(store) for store in store_list]
+    def __init__(self,
+                 best_buy: BestBuy):
+        self._best_buy = best_buy
 
-    def search_by_postal_code(self, postal_code, distance=None, store_services=[], store_type=[]):
-        """
-        Returns multiple Store objects
-        """
+    @property
+    def store_types(self):
+        return ["Big Box", "Express Kiosk", "Warehouse Sale", "Outlet Center", "PAC Standalone Store"]
+
+    def _get_query(self,
+                   query: str) -> Union[dict, List[Store]]:
+        store_list = self._best_buy._query(version='v1',
+                                           query=f'({query})',
+                                           category=self.category)
+        if self._best_buy.raw:
+            return store_list.get('stores', {})
+        return [Store(store, best_buy=self._best_buy) for store in store_list.get('stores', [])]
+
+    def _add_store_types_and_services(self,
+                                      store_services: List[str] = None,
+                                      store_types: List[str] = None) -> str:
         query = ""
-        if store_type:
-            query = query + '&('
-            for storeType in store_type:
-                query = query + "(storeType={0})|".format(storeType)
-            query = query[:-1] + ")"
+        if store_types:
+            filtered_store_types = []
+            for store_type in store_types:
+                if store_type in self.store_types:
+                    filtered_store_types.append(store_type)
+            query += '&(' + "|".join(f"storeType={store_type}" for store_type in filtered_store_types) + ")"
         if store_services:
-            query = query + '&('
-            for service in store_services:
-                query = query + "(services.service=\"{0}\")&".format(service)
-            query = query[:-1] + ")"
+            query += '&(' + "&".join(f'services.service="{service}"' for service in store_services) + ")"
+        return query
+
+    def search_by_postal_code(self,
+                              postal_code: int,
+                              distance: int = None,
+                              store_services: List[str] = None,
+                              store_types: List[str] = None) -> Union[dict, List[Store]]:
+        """
+        Returns Store objects
+        """
+        prefix = f'(postalCode={postal_code})'
         if distance:
-            return self._post_query('(area({0},{1}))'.format(str(postal_code), str(distance)))
-        return self._post_query('(postalCode={0}){1}'.format(str(postal_code, query)))
+            prefix = f'(area({postal_code},{distance})'
+        query = f"{prefix}{self._add_store_types_and_services(store_services=store_services, store_types=store_types)}"
+        return self._get_query(query=query)
 
-    def search_by_city(self, city, store_services=[], store_type=[]):
+    def search_by_city(self,
+                       city: str,
+                       store_services: List[str] = None,
+                       store_types: List[str] = None) -> Union[dict, List[Store]]:
         """
-        Returns multiple Store objects
+        Returns Store objects
         """
-        query = ""
-        if store_type:
-            query = query + '&('
-            for storeType in store_type:
-                query = query + "(storeType={0})|".format(storeType)
-            query = query[:-1] + ")"
-        if store_services:
-            query = query + '&('
-            for service in store_services:
-                query = query + "(services.service=\"{0}\")&".format(service)
-            query = query[:-1] + ")"
-        return self._post_query('(city={0}){1}'.format(city, query))
+        query = f"(city={city}){self._add_store_types_and_services(store_types=store_types, store_services=store_services)}"
+        return self._get_query(query=query)
 
-    def search_by_lat_long(self, latitude, longitude, distance, store_services=[], store_type=[]):
+    def search_by_lat_long(self,
+                           latitude: float,
+                           longitude: float,
+                           distance: int,
+                           store_services: List[str] = None,
+                           store_types: List[str] = None) -> Union[dict, List[Store]]:
         """
-        Returns multiple Store objects
+        Returns Store objects
         """
-        query = ""
-        if store_type:
-            query = query + '&('
-            for storeType in store_type:
-                query = query + "(storeType={0})|".format(storeType)
-            query = query[:-1] + ")"
-        if store_services:
-            query = query + '&('
-            for service in store_services:
-                query = query + "(services.service=\"{0}\")&".format(service)
-            query = query[:-1] + ")"
-        return self._post_query('(area({0},{1},{2}){3}'.format(str(latitude), str(longitude), str(distance), query))
+        query = f'(area({latitude},{longitude},{distance}){self._add_store_types_and_services(store_services=store_services, store_types=store_types)}'
+        return self._get_query(query=query)
 
-    def search_by_store_id(self, store_id, store_services=[], store_type=[]):
+    def search_by_store_id(self,
+                           store_id: int,
+                           store_services: List[str] = None,
+                           store_types: List[str] = None) -> Union[dict, List[Store]]:
         """
-        Returns one Store object
+        Returns Store objects
         """
-        query = ""
-        if store_type:
-            query = query + '&('
-            for storeType in store_type:
-                query = query + "(storeType={0})|".format(storeType)
-            query = query[:-1] + ")"
-        if store_services:
-            query = query + '&('
-            for service in store_services:
-                query = query + "(services.service=\"{0}\")&".format(service)
-            query = query[:-1] + ")"
-        try:
-            return self._post_query('(storeId={0}){1}'.format(str(store_id), query))[0]
-        except IndexError:
-            return None
+        query = f'(storeId={store_id}){self._add_store_types_and_services(store_services=store_services, store_types=store_types)}'
+        return self._get_query(query=query)
 
-    def search_by_region_state(self, region_state, store_services=[], store_type=[]):
+    def search_by_region_state(self,
+                               region_state: str,
+                               store_services: List[str] = None,
+                               store_types: List[str] = None) -> Union[dict, List[Store]]:
         """
-        Returns multiple Store objects
+        Returns Store objects
         """
-        query = ""
-        if store_type:
-            query = query + '&('
-            for storeType in store_type:
-                query = query + "(storeType={0})|".format(storeType)
-            query = query[:-1] + ")"
-        if store_services:
-            query = query + '&('
-            for service in store_services:
-                query = query + "(services.service=\"{0}\")&".format(service)
-            query = query[:-1] + ")"
-        return self._post_query('(region={0}){1}'.format(region_state), query)
+        query = f'(region={region_state}){self._add_store_types_and_services(store_services=store_services, store_types=store_types)}'
+        return self._get_query(query=query)
+
+    def product_availability(self,
+                             sku: int,
+                             store_id: int = None,
+                             postal_code: int = None) -> Union[dict, List[Store]]:
+        if not store_id and not postal_code:
+            return []
+        store_list = self._best_buy._query(version='v1',
+                                           query='stores.json',
+                                           category=f"products/{sku}/",
+                                           sort=f"&storeId={store_id}" if store_id else f"&postalCode={postal_code}")
+        if self._best_buy.raw:
+            return store_list.get('stores', {})
+        return [Store(store, best_buy=self._best_buy) for store in store_list.get('stores', [])]
 
 
 class ProductAPI:
@@ -154,7 +187,13 @@ class ProductAPI:
 
     category = 'products'
 
-    def _post_query(self, query, sort=None):
+    def __init__(self,
+                 best_buy: BestBuy):
+        self._best_buy = best_buy
+
+    def _get_query(self,
+                   query: str,
+                   sort: str = None) -> Union[dict, List[Product]]:
         """
         Call API
 
@@ -162,59 +201,121 @@ class ProductAPI:
 
         Return Product object(s)
         """
-        product_list = _query('v1', query, self.category,
-                              '&sort={0}.asc'.format(sort) if sort else None).get('products', [])
-        return [Product(product) for product in product_list]
+        product_list = self._best_buy._query(version='v1',
+                                             query=query,
+                                             category=self.category,
+                                             sort=f'&sort={sort}.asc' if sort else None)
+        if self._best_buy.raw:
+            return product_list.get('products', {})
+        return [Product(product, best_buy=self._best_buy) for product in product_list.get('products', [])]
 
-    def search_by_sku(self, sku, sort=None):
+    def search_by_sku(self,
+                      sku: int,
+                      sort: str = None) -> Union[dict, List[Product]]:
         """
         Search by SKU number
 
         :param sort:
         :param sku: SKU number
 
-        Returns one Product object
+        Returns Product objects
         """
-        try:
-            return self._post_query('(sku={0})'.format(str(sku)), sort)[0]
-        except IndexError:
-            return None
+        return self._get_query(query=f'(sku={sku})', sort=sort)
 
-    def search_by_upc(self, upc, sort=None):
+    def search_by_upc(self,
+                      upc: int,
+                      sort: str = None) -> Union[dict, List[Product]]:
         """
         Search by UPC number
 
         :param sort:
         :param upc: UPC number
 
-        Returns one Product object
+        Returns Product objects
         """
-        try:
-            return self._post_query('(upc={0})'.format(str(upc)), sort)[0]
-        except IndexError:
-            return None
+        return self._get_query(query=f'(upc={upc})', sort=sort)
 
-    def search_by_description(self, description, sort=None):
+    def search_by_description(self,
+                              description: str,
+                              sort: str = None) -> Union[dict, List[Product]]:
         """
         Search by product description
 
         :param sort:
         :param description: Product description to search
 
-        Returns multiple Product objects
+        Returns Product objects
         """
-        return self._post_query('(description={0})'.format(description), sort=None)
+        return self._get_query(query=f'(description={description})', sort=sort)
 
-    def search(self, searchTerm=None, **kwargs):
+    @property
+    def search_parameters(self) -> List[str]:
+        return ["bestSellingRank",
+                "color",
+                "condition",
+                "customerReviewAverage",
+                "customerReviewCount",
+                "description",
+                "dollarSavings",
+                "freeShipping",
+                "inStoreAvailability",
+                "manufacturer",
+                "modelNumber",
+                "name",
+                "onlineAvailability",
+                "onSale",
+                "percentSavings",
+                "regularPrice",
+                "salePrice",
+                "shippingCost",
+                "sku",
+                "type",
+                "upc"]
+
+    def _bool_to_string(self,
+                        boolean: bool) -> str:
+        if boolean:
+            return 'true'
+        return 'false'
+
+    def _lowercase_string(self,
+                          string: str) -> str:
+        return string.lower()
+
+    def _split_argument(self,
+                        argument: str) -> [str, str, str]:
+        sign = "="
+        if "<=" in argument:
+            sign = "<="
+        if ">=" in argument:
+            sign = ">="
+        argument.replace(sign, "=")
+        k, v = argument.split("=")
+        return k, sign, v
+
+    def _clean_parameters(self,
+                          *args) -> List[str]:
+        final_args = []
+        for arg in args:
+            k, sign, v = self._split_argument(argument=arg)
+            if k in self.search_parameters:
+                if k in ['onSale', 'onlineAvailability', 'inStoreAvailability', 'freeShipping']:
+                    final_v = self._lowercase_string(string=v)
+                else:
+                    final_v = v
+                final_args.append(f"{k}{sign}{final_v}")
+        return final_args
+
+    def search(self,
+               keyword: str = None,
+               *args) -> Union[dict, List[Product]]:
         """
         General search
 
-        :param searchTerm: Keyword or phrase to search for
-        :param **kwargs: Available options:
+        :param keyword: Keyword or phrase to search for
+        :param *args: Available options:
             bestSellingRank,
             color,
-            categoryPath.id,
-            categoryPath.name,
             condition,
             customerReviewAverage,
             customerReviewCount,
@@ -237,69 +338,111 @@ class ProductAPI:
             upc
 
 
-        Returns multiple Product objects
+        Returns Product objects
         """
-        if not searchTerm:
-            searchTerm = ""
+        if not keyword:
+            keyword = ""
         else:
-            searchTerm = '(search={})'.format(searchTerm)
-        if kwargs:
-            searchTerm += '&'
-            for key, value in kwargs.items():
-                searchTerm = '{s}{k}={v}&'.format(s=searchTerm, k=key, v=value)
-            searchTerm = '({})'.format(searchTerm[:-1])
-        return self._post_query(searchTerm)
+            keyword = f'(search={keyword})'
+        if args:
+            keyword += '&' + "&".join(f"{k}" for k in self._clean_parameters(*args))
+            keyword = f'({keyword})'
+        return self._get_query(query=keyword)
+
+    def also_viewed(self, sku: int) -> Union[dict, List[Product]]:
+        product_list = self._best_buy._query(version='beta/products',
+                                             query='',
+                                             category=f"{sku}/alsoViewed")
+        if self._best_buy.raw:
+            return product_list.get('results', {})
+        return [Product(product, best_buy=self._best_buy) for product in product_list.get('results', [])]
 
 
 class RecommendationAPI:
 
-    def _post_query(self, query, endpoint):
-        recommendation_list = _query('beta/products', '{0}'.format(query), endpoint, None).get('results', [])
-        return [Recommendation(recommendation) for recommendation in recommendation_list]
+    def __init__(self,
+                 best_buy: BestBuy):
+        self._best_buy = best_buy
 
-    def most_popular_by_category_id(self, category_id):
-        return self._post_query('(categoryId={0})'.format(str(category_id)), 'mostViewed')
+    def _get_query(self,
+                   query: str,
+                   endpoint: str) -> Union[dict, List[Recommendation]]:
+        recommendation_list = self._best_buy._query(version='beta/products',
+                                                    query=f'{query}',
+                                                    category=endpoint)
+        if self._best_buy.raw:
+            return recommendation_list.get('results', {})
+        return [Recommendation(recommendation, best_buy=self._best_buy) for recommendation in recommendation_list.get('results', [])]
 
-    def trending_by_category_id(self, category_id):
-        return self._post_query('(categoryId={0})'.format(str(category_id)), 'trendingViewed')
+    def most_popular_by_category_id(self,
+                                    category_id) -> Union[dict, List[Recommendation]]:
+        return self._get_query(query=f'(categoryId={category_id})', endpoint='mostViewed')
+
+    def trending_by_category_id(self,
+                                category_id) -> Union[dict, List[Recommendation]]:
+        return self._get_query(query=f'(categoryId={category_id})', endpoint='trendingViewed')
 
 
 class CategoryAPI:
+
     category = 'categories'
 
-    def _post_query(self, query):
-        category_list = _query('v1', '{0}'.format(query), self.category, None).get('categories', [])
-        return [Category(category) for category in category_list]
+    def __init__(self,
+                 best_buy: BestBuy):
+        self._best_buy = best_buy
 
-    def search_all_categories(self):
-        return self._post_query('')
+    def _get_query(self,
+                   query: str) -> Union[dict, List[Category]]:
+        category_list = self._best_buy._query(version='v1',
+                                              query=f'{query}',
+                                              category=self.category,
+                                              sort=None)
+        if self._best_buy.raw:
+            return category_list.get('categories', {})
+        return [Category(category, best_buy=self._best_buy) for category in category_list.get('categories', [])]
 
-    def search_top_level_categories(self):
-        return self._post_query('(id=abcat*)')
+    def search_all_categories(self) -> Union[dict, List[Category]]:
+        return self._get_query(query='')
 
-    def search_by_category_name(self, category_name):
-        return self._post_query('(name={0}*)'.format(str(category_name)))
+    def search_top_level_categories(self) -> Union[dict, List[Category]]:
+        return self._get_query(query='(id=abcat*)')
 
-    def search_by_category_id(self, category_id):
-        return self._post_query('(id={0})'.format(str(category_id)))
+    def search_by_category_name(self,
+                                category_name: str) -> Union[dict, List[Category]]:
+        return self._get_query(query=f'(name={category_name}*)')
+
+    def search_by_category_id(self,
+                              category_id) -> Union[dict, List[Category]]:
+        return self._get_query(query=f'(id={category_id})')
 
 
 class OpenBoxAPI:
+
     category = 'openBox'
 
-    def _post_query(self, query, sort=None):
-        openBox_list = _query('beta/products', query, self.category, None).get('results', [])
-        return [OpenBox(openBox) for openBox in openBox_list]
+    def __init__(self,
+                 best_buy: BestBuy):
+        self._best_buy = best_buy
 
-    def all_open_box_offers(self):
-        return self._post_query('')
+    def _get_query(self,
+                   query: str,
+                   sort: str = None) -> Union[dict, List[OpenBox]]:
+        open_box_list = self._best_buy._query(version='beta/products',
+                                             query=query,
+                                             category=self.category,
+                                             sort=sort)
+        if self._best_buy.raw:
+            return open_box_list.get('results', {})
+        return [OpenBox(openBox, best_buy=self._best_buy) for openBox in open_box_list.get('results', [])]
 
-    def open_box_offers_by_skus(self, skus):
-        query = ""
-        for sku in skus:
-            query = str(sku) + ", "
-        query = query[:-2]
-        return self._post_query('(sku%20%in({0}))'.format(query))
+    def all_open_box_offers(self) -> Union[dict, List[OpenBox]]:
+        return self._get_query('')
 
-    def open_box_offers_by_category_id(self, category_id):
-        return self._post_query('(categoryId={0})'.format(str(category_id)))
+    def open_box_offers_by_skus(self,
+                                skus: List[int]) -> Union[dict, List[OpenBox]]:
+        query = ", ".join(str(sku) for sku in skus)
+        return self._get_query(query=f'(sku%20%in({query}))')
+
+    def open_box_offers_by_category_id(self,
+                                       category_id) -> Union[dict, List[OpenBox]]:
+        return self._get_query(query=f'(categoryId={category_id})')
